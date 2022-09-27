@@ -1,1 +1,1 @@
-from .client_kb import kb_client
+from .client_help_kb import kb_help_client

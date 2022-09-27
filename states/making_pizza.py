@@ -6,4 +6,4 @@ class FSMmakingPizza(StatesGroup):
 	name = State()
 	description = State()
 	price = State()
-	view = State()
+	

@@ -5,3 +5,4 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 BOT_TOKEN = os.getenv('TOKEN')
+ADMINS = os.getenv('ADMINS')
