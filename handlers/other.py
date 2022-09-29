@@ -1,5 +1,5 @@
 from loader import dp
-from aiogram import types, Dispatcher
+from aiogram import types
 import string, json
 
 

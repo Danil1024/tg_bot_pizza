@@ -53,7 +53,7 @@ async def comand_menu(message: types.Message):
 	await message.answer('МЕНЮ:')
 	await api_pizza_db.db_view_admin_menu_command(message)
 
-@dp.callback_query_handler(AdminFilter(), lambda x: x.data and x.data.startswith('удалить'))
+@dp.callback_query_handler(AdminFilter(), lambda x: 'удалить' in x.data)
 async def dell_item(callback_query: types.CallbackQuery):
 	name = callback_query.data.replace('удалить ', '')
 	await api_pizza_db.db_dellete_menu_command(name)

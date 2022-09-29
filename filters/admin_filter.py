@@ -5,4 +5,4 @@ from data import config
 
 class AdminFilter(BoundFilter):
 	async def check(self, message: types.Message):
-		return str(message.from_user.id) in  config.ADMINS
+		return message.from_user.id in [int(i) for i in config.ADMINS.split(' ')]
