@@ -36,7 +36,7 @@ async def comand_menu_client(message: types.Message):
 async def comand_address(message: types.Message):
 	await message.answer('ул.Колбаскина, дом 15', reply_markup= ReplyKeyboardRemove())
 
-
+# добавление еды в корзину
 @dp.callback_query_handler(lambda x: x.data and x.data.startswith('заказ'))
 async def comand_add_item(callback_query: types.CallbackQuery):
 	name_price = callback_query.data.replace('заказ ', '').split(':')
@@ -45,19 +45,24 @@ async def comand_add_item(callback_query: types.CallbackQuery):
 	print(list_product)
 	await callback_query.answer(f'{name_price[0]} добавленна', show_alert=True)
 
+# просмотр корзины
 @dp.message_handler(commands=['корзина'])
 async def comand_view_basket(message: types.Message):
 	if list_product:
+		summ = float()
+		for k in list_product:
+			summ += float(k[1])
 		for i in list_product:
 			name = i[0]
 			await message.answer(text= f'{name}, {i[-1]}', reply_markup= InlineKeyboardMarkup(row_width=1)\
 				.add(InlineKeyboardButton(f'убрать из корзины {name}', callback_data=f'убрать из корзины {name}')))
-		await message.answer(text= '^^^', reply_markup= ReplyKeyboardMarkup(resize_keyboard=True)\
+		await message.answer(text= f'ценна за все : {summ}', reply_markup= ReplyKeyboardMarkup(resize_keyboard=True)\
 			.add(KeyboardButton('/заказать')).add(KeyboardButton('/очистить_корзину'))\
 				.add(KeyboardButton('/меню')).add(KeyboardButton('/корзина')))
 	else:
 		await message.answer(text= 'корзина пуста')
 
+# удаление из корзины
 @dp.callback_query_handler(lambda x: x.data and x.data.startswith('убрать из корзины'))
 async def comand_dell_item(callback_query: types.CallbackQuery):
 	name_ = callback_query.data.replace('убрать из корзины ', '')
@@ -71,6 +76,7 @@ async def comand_dell_item(callback_query: types.CallbackQuery):
 	print(list_product)
 	await callback_query.answer(f'{name_} убрано', show_alert=True)
 
+# полное очишение корзины
 @dp.message_handler(commands=['очистить_корзину'])
 async def comand_clear_basket(message: types.Message):
 	global list_product
@@ -103,20 +109,38 @@ async def write_order_bd(message: types.Message, state: FSMContext):
 	name = f'{message.from_user.first_name} {message.from_user.last_name} {message.from_user.username}' 
 	global list_product
 	str_product = str()
+	summ = float()
 	for i in list_product:
 		str_product += ' ' + str(i)
+		summ += float(i[1])
 	async with state.proxy() as date:
 		adres_and_phone = date['adress_and_phone']
-	await api_pizza_db.db_add_order_command(name, str_product, adres_and_phone)
+	await api_pizza_db.db_add_order_command(name, str_product, summ, adres_and_phone, message.from_user.id)
 	await state.finish()
-	await message.answer(text= 'Ваш заказ в режиме ожидание когда его примут вам вышлют сообщение')
-	
+	list_product = []
+	summ = 0.0
+	await message.answer(text= 'Ваш заказ в режиме ожидание когда его примут вам вышлют сообщение',\
+		reply_markup= ReplyKeyboardMarkup(resize_keyboard=True)\
+		.add(KeyboardButton(text= '/мои_заказы')))
 
 @dp.message_handler(commands= 'Изменить_адрес_или_телефон', state=FSMmakingOrder.check_adress_and_phone)
-async def comand_change_order(message: types.Message, state: FSMContext):
+async def comand_change_adres_and_phone_order(message: types.Message, state: FSMContext):
 	await state.finish()
 	if list_product:
 		await message.answer(text= '''Внимание мы работаем только по городу Бишкек.
 Введите пожалуйста ваш адрес (улица.дом.квартира)
 Введите пожалуйста мобильный телефон по которому с вами сможет связаться курьер''')
 		await FSMmakingOrder.adress_and_phone.set()
+@dp.message_handler(commands= ['мои_заказы'])
+async def user_menu_order_command(message: types.Message):
+	await api_pizza_db.user_menu_order(message.from_user.id)
+
+@dp.callback_query_handler(lambda x: 'отменить заказ:' in x.data)
+async def user_cause_order(callback_query: types.CallbackQuery):
+	if await api_pizza_db.check_order(callback_query.data.split(':')[1]) != []:
+		id_order = callback_query.data.split(':')[1]
+		id_user = callback_query.data.split(':')[2]
+		await api_pizza_db.delete_one_order(id_order)
+		await callback_query.answer('Заказ удален', show_alert=True)
+	else:
+		await callback_query.answer('Заказ уже был удален!', show_alert=True)
